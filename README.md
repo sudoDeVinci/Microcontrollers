@@ -12,6 +12,7 @@ Due to the closed source nature of my latest project with the Växjö Linnaeus S
         4.1.............. Wi-Fi Connections
         4.2.............. Getting Correct Time
         4.3.............. Keeping Connections
+    5.0.................. Sensor Reading
 
 
 ## 1.0. Arduino OTA Updates
@@ -70,8 +71,10 @@ The ESP32 consistently seems to be the best microcontroller for image capture/ma
 
 
 ## 3.0. String Precautions
+
 ## 4.0. Networking
 ### 4.1. Wi-Fi Connection
 ### 4.2. Getting Correct Time
 ### 4.3. Keeping Connections
 
+## 5.0. Sensor Reading
