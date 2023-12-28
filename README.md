@@ -4,14 +4,14 @@ This repository serves to demonstrate more hard to find/grasp/lesser talked abou
 
 Due to the closed source nature of my latest project with the Växjö Linnaeus Science Park, any descriptions used from it will only be posted here after being sufficiently decontextualized.
 
-## Topics Covered
+## Topics
     1.0.................. Arduino OTA Updates
     2.0.................. ESP32 Image Capture
     3.0.................. String Precautions
     4.0.................. Networking
         4.1.............. Wi-Fi Connections
         4.2.............. Getting Correct Time
-        4.3.............. Keeping COnnections
+        4.3.............. Keeping Connections
 
 
 ## 1.0. Arduino OTA Updates
