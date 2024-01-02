@@ -20,6 +20,8 @@ Due to the closed source nature of my latest project with the Växjö Linnaeus S
         4.3.............. Keeping Connections
 
     5.0.................. Sensor Reading
+    
+    6.0.................. Multi-Core Usage
 
 
 ## 1.0. Arduino OTA Updates
@@ -272,3 +274,5 @@ String header(MIMEType type, int bodyLength, IPAddress HOST, String macAddress, 
 ### 4.3. Keeping Connections
 
 ## 5.0. Sensor Reading
+
+## Mutli-Core Usage
