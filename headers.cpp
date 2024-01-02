@@ -1,5 +1,11 @@
 #include <Arduino.h>
 
+enum class MIMEType {
+    IMAGE_PNG,
+    IMAGE_JPG,
+    APP_FORM,
+    ...
+};
 
 String MIMEStr[] = {
     "image/png",

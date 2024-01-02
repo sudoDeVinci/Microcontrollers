@@ -1,6 +1,6 @@
 # Microcontroller Usage - Notes
 
-This repository serves to demonstrate more hard to find/grasp/lesser talked about concepts in microcontroller development using Arduino. Concepts here work for Pi Pico, Esp32-SX and Arduino Uno unless specified otherwise.
+This repository serves to demonstrate more hard to find/grasp, lesser talked about, or usually poorly explained concepts in microcontroller development using Arduino. Concepts here work for Pi Pico, Esp32-SX and Arduino Uno unless specified otherwise.
 
 Due to the closed source nature of my latest project with the Växjö Linnaeus Science Park, any descriptions used from it will only be posted here after being sufficiently decontextualized.
 
@@ -195,6 +195,76 @@ NOTE: You must set the correct frequency for the camera you've selected. Camera 
 
 
 ## 3.0. String Precautions
+Because I'm a noob, I mostly use the Arduino String implementation for simple variable-length Strings. The drawback with this is that Arduino String allocation and de-allocation repeatedly can cause memory fragmentation over time. It's also not the fastest way to deal with Strings, but the Arduino String object gives alot in the way of eas-of-use. Many libraries also use the Arduino String implementation when working with Strings, making it a small chore to constantly convert back and forth. I think the trade-off is good enough for most projects. 
+
+<br>
+
+That being said, due to the trade-offs, precautions have to be taken for Arduino String use to prevent slowdown, bloat, and memory fragmentation. Simple ways to handle most of these are:
+1. Creating and deleting the Strings we use within the same function.
+2. Pre-allocating Strings when possible to avoiddynamic re-allocation.
+
+An example I've used (stupidly) before is creating a custom header for an HTTP packet. This is sometimes needed if you for some reason wanted ot add optional/custom headers.
+Headers are a certain format, meaning they can be made into a function call for construction. Due to their set format, it make it easy to calculate their size ahead of time and reserve that memory with Arduino's **reserve()** String method.
+If we pass in the details to our function and manipulate the Strings all within the function, once the function fgoes out of scope, the memory used for temporary Strings will go out of scope and be freed. An example is here:
+Firstly, it's a good idea to have frequently used Strings, and store related strings in consecutive memory somehow, like a struct. In my case, I usually keep formatted fields in an array and index them with an enum for ease-of-use.
+
+```cpp
+enum class MIMEType {
+    IMAGE_PNG,
+    IMAGE_JPG,
+    APP_FORM
+};
+
+String MIMEStr[] = {
+    "image/png",
+    "image/jpeg",
+    "application/x-www-form-urlencoded"
+};
+
+/**
+ * Referencing the Strings as below. 
+ */
+MIMEType type = MIMEType::IMAGE_PNG;
+String mimeType = MIMEStr[static_cast<int>(type)];
+```
+Now that we can reference our existing strings, let's construct the header:
+
+```cpp
+String header(MIMEType type, int bodyLength, IPAddress HOST, String macAddress, String timestamp) {
+
+  String mimeType = MIMEStr[static_cast<int>(type)];
+  String clfr = "\r\n";
+  int end = clrf.length();
+
+  int headerLength = HeaderStr[0].length() + end +
+                     HeaderStr[1].length() + HOST.toString().length() + end +
+                     ... +
+                     HeaderStr[10].length() + timestamp.length();
+  String header;
+  header.reserve(headerLength+1);
+}
+```
+
+This here allows use to reserve just enough space to build our header String object. We also end up creating some unseen temporary Strings because we have to call .toString() on the IPAddress, though this isn't an issue, as this small temporary String simply goes out of scope and gets freed at the end of the function call.
+Once we have reserved the sapce, we can use **.concat()** or += to build the String.I try to use **.concat()** as a force of habit.
+
+```cpp
+String header(MIMEType type, int bodyLength, IPAddress HOST, String macAddress, String timestamp) {
+
+  ...
+
+  header.reserve(headerLength+1);
+
+  header.concat(HeaderStr[0] + clrf);
+  header.concat(HeaderStr[1] + HOST.toString() + clrf);
+
+  ...
+  
+  header.concat(HeaderStr[6] + timestamp + clrf);
+  
+  return header;
+}
+```
 
 ## 4.0. Networking
 ### 4.1. Wi-Fi Connection
