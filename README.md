@@ -313,4 +313,4 @@ String getTime(tm *timeinfo, time_t *now, int timer) {
 
 ## 5.0. Sensor Reading
 
-## Mutli-Core Usage
+## 6.0 Mutli-Core Usage
