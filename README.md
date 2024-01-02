@@ -271,6 +271,44 @@ String header(MIMEType type, int bodyLength, IPAddress HOST, String macAddress, 
 ## 4.0. Networking
 ### 4.1. Wi-Fi Connection
 ### 4.2. Getting Correct Time
+The best way to get time while connected to the internet, is to contact one of many NTP servers.
+
+```cpp
+  const char* ntpServer = "pool.ntp.org";
+  const char* timezone = "CET-1-CEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00";
+  configTime(0, 0, ntpServer);
+  setenv("TZ", timezone, 1);
+```
+
+```cpp
+tm TIMEINFO;
+time_t NOW;
+/**
+  * Get the current time and format the timestamp as MySQL DATETIME.
+  * timeinfo is an empty struct which is filled by calling getLocalTime().
+  * If tm_year is not equal to 0xFF, it is assumed that valid time information has been received.
+  * Big thanks to Andreas Spiess:https://github.com/SensorsIot/NTP-time-for-ESP8266-and-ESP32/blob/master/NTP_Example/NTP_Example.ino
+  * 
+  */
+String getTime(tm *timeinfo, time_t *now, int timer) {
+  uint32_t start = millis();
+  debug("Getting time!");
+
+  do {
+    time(now);
+    localtime_r(now, timeinfo);
+    debug(".");
+    delay(150);
+  } while (((millis() - start) <= (1000 * timer)) && (timeinfo -> tm_year <= 1970));
+  debugln();
+  if (timeinfo -> tm_year == 1970) return "None";
+
+  char timestamp[30];
+  strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(now));
+  debugln("Got time!");
+  return String(timestamp);
+}
+```
 ### 4.3. Keeping Connections
 
 ## 5.0. Sensor Reading
