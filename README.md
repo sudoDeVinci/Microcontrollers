@@ -205,7 +205,7 @@ That being said, due to the trade-offs, precautions have to be taken for Arduino
 1. Creating and deleting the Strings we use within the same function.
 2. Pre-allocating Strings when possible to avoiddynamic re-allocation.
 
-An example I've used (stupidly) before is creating a custom header for an HTTP packet. This is sometimes needed if you for some reason wanted ot add optional/custom headers.
+An example I've used (stupidly) before is creating a custom header for an HTTPS packet. This is sometimes needed if you for some reason wanted to use HTTPS, especially with optional/custom headers.
 Headers are a certain format, meaning they can be made into a function call for construction. Due to their set format, it make it easy to calculate their size ahead of time and reserve that memory with Arduino's **reserve()** String method.
 If we pass in the details to our function and manipulate the Strings all within the function, once the function fgoes out of scope, the memory used for temporary Strings will go out of scope and be freed. An example is here:
 Firstly, it's a good idea to have frequently used Strings, and store related strings in consecutive memory somehow, like a struct. In my case, I usually keep formatted fields in an array and index them with an enum for ease-of-use.
@@ -270,6 +270,8 @@ String header(MIMEType type, int bodyLength, IPAddress HOST, String macAddress, 
 
 ## 4.0. Networking
 ### 4.1. Wi-Fi Connection
+
+
 ### 4.2. Getting Correct Time
 The best way to get time while connected to the internet, is to contact one of many NTP servers.
 
@@ -313,4 +315,4 @@ String getTime(tm *timeinfo, time_t *now, int timer) {
 
 ## 5.0. Sensor Reading
 
-## 6.0 Mutli-Core Usage
+## 6.0. Mutli-Core Usage
