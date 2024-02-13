@@ -2,7 +2,7 @@
 
 This repository serves to demonstrate more hard to find/grasp, lesser talked about, or usually poorly explained concepts in microcontroller development using Arduino. Concepts here work for Pi Pico, Esp32-SX and Arduino Uno unless specified otherwise.
 
-Due to the closed source nature of my latest project with the Växjö Linnaeus Science Park, any descriptions used from it will only be posted here after being sufficiently decontextualized.
+*Due to the closed source nature of my latest project with the Växjö Linnaeus Science Park, any descriptions used from it will only be posted here after being sufficiently decontextualized.*
 
 ## Contents
     1.0.................. Arduino OTA Updates
@@ -34,8 +34,8 @@ There are a number of ways to specify this control flow, though the easiest is t
 
     -> Board sends current firmware version number (as String) to server.
     -> Server checks against most updated version number.
-        -> If update is needed, server sends HTTP_UPDATE_OK (200 OK) then firmware file.
-        -> If no update is needed, server sends HTTP_UPDATE_NO_UPDATES (304 Not Modified).
+        -> If update is needed, server sends HTTP_UPDATE_OK (200 OK) with firmware .bin file.
+        -> If no update is needed, server sends HTTP_UPDATE_NO_UPDATES (304 Not Modified) and optinonal message.
     
     -> Update happens automatically and board restarts.
     -> If server error of any kind, the return value we see later is HTTP_UPDATE_FAILED.
@@ -69,6 +69,9 @@ switch (ret) {
 ```
 To reliably check for updates now, we first call this function in our setup before any other functionality whihc may break our ability to connect to our server, such as sensor initialization. Then, we call this at a given point in our main program loop. 
 
+This '.update()' is overloaded for use with both the WiFiClient and WiFiClientSecure for HTTP(S). It's also available to use with with HTTPClient and ESPHTTPCLient, though I've had mixed results using those versions for just HTTP. 
+Current in most projects, I still reserve use of WiFiClient for OTA updates.
+
 
 ## 2.0. ESP32-SX Image Capture
 
@@ -78,7 +81,7 @@ The ESP32 consistently seems to be the best microcontroller for image capture/ma
 - Compatibility & relatively good support for most camera sensors via DVP.
 <br>
 
-Though the ESP32-S3 and similar boards have USB-OTG, the easiest way to use camera modules is via DVP on the board. This will necessarily leave certain pins unusable. DOcumentation and exmaples for this are well made, especially by FreeNove, who I use regularly. There are three (3) steps in camera usage:
+Though the ESP32-S3 and similar boards have USB-OTG, the easiest way to use camera modules is via DVP on the board. This will necessarily leave certain pins unusable. Documentation and examples for this are well made, especially by FreeNove, who I use regularly. There are three (3) steps in camera usage:
 1. Initialization
 2. Capturing to / Freeing image buffer
 3. De-initialization
@@ -86,6 +89,8 @@ Though the ESP32-S3 and similar boards have USB-OTG, the easiest way to use came
 ### 2.1. Camera Initialization
 
 The exact steps for initialization will depend on the exact chip and manufacturer, but it seems that the FreeNove version works for most "CAM-enabled" ESP32 boards. Here, after importing "esp32_camera.h" in the Arduino IDE, or downlaoding the source from FreeNove's Github, we must change a few things.
+
+<br>
 
 1. Firstly, we need to define the pins for the Camera usage. These will be indicated on the diagram of the board you've got.
 
@@ -121,7 +126,9 @@ The exact steps for initialization will depend on the exact chip and manufacture
 
               ...
     ```
-  This would simply be setting the correct constant in our relative cpp/ino file.  
+    This would simply be setting the correct constant in our relative cpp/ino file.  
+
+    <br>
 
 2. Next is setting the frequency, pins, and other settings. 
 NOTE: You must set the correct frequency for the camera you've selected. Camera models will not function correctly otherwise.
@@ -134,7 +141,12 @@ NOTE: You must set the correct frequency for the camera you've selected. Camera 
     config.ledc_channel = LEDC_CHANNEL_0;
     config.ledc_timer = LEDC_TIMER_0;
     config.pin_d0 = Y2_GPIO_NUM;
-              ...
+    config.pin_d1 = Y3_GPIO_NUM;
+    config.pin_d2 = Y4_GPIO_NUM;
+    config.pin_d3 = Y5_GPIO_NUM;
+    config.pin_d4 = Y6_GPIO_NUM;
+    config.pin_d5 = Y7_GPIO_NUM;
+    config.pin_d6 = Y8_GPIO_NUM;
     config.pin_d7 = Y9_GPIO_NUM;
     config.pin_xclk = XCLK_GPIO_NUM;
     config.pin_pclk = PCLK_GPIO_NUM;
@@ -145,55 +157,147 @@ NOTE: You must set the correct frequency for the camera you've selected. Camera 
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
     config.xclk_freq_hz = CAMERA_CLK;
-    config.frame_size = FRAMESIZE_FHD;
+    config.frame_size = FRAMESIZE_QXGA;
     config.pixel_format = PIXFORMAT_JPEG;
-    config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
+    config.grab_mode = CAMERA_GRAB_LATEST; // Needs to be "CAMERA_GRAB_LATEST" for camera to capture.
     config.fb_location = CAMERA_FB_IN_PSRAM;
-    config.jpeg_quality = 15;
+    config.jpeg_quality = 10;
     config.fb_count = 1;
 
-    ```
-    
-    Next is checking for PSRAM. This is redundant if you already know the specs of your board and don't intend of using this code elsewhere. This check does make your code more portable however, as older boards may not have PSRAM.
-    
-    ```cpp
+              ...
 
-    /**
-     * if PSRAM IC present, init with higher resolution * 
-     * and higher JPEG quality for larger pre-allocated frame buffer. 
-     */ 
-    if(psramFound()){
-      config.jpeg_quality = 5;
-      config.fb_count = 2;
-      config.grab_mode = CAMERA_GRAB_LATEST;
-    } else {
-      /** 
-       *Limit the frame size when PSRAM is not available
-       */
+    ```
+
+  <br>
+
+3. Next is checking for PSRAM. This seems redundant if you already know the specs of your board and don't intend of using this code elsewhere. This check does make your code more portable however, as older boards may not have PSRAM. It may also be that you must turn on the ability to use PSRAM in the Arduino IDE for your board depending on version, or sleect a different (more generic) board version a select settings to accomodate.
+
+    **As of 13/02/2024, the ESP32S3-OTG board in Arduino IDE does NOT support PSRAM usage.**
+    If you are using this board, you must select the ESP32S3 Dev Module as the board model. From there go to Tools -> PSRAM and select the type on your board.
+    
+    <br>
+
+    ![-----](image.png)
+    
+    <br>
+
+    Limit the resoltuion and jpeg quality to something smaller if PSRAM isn't found, and maybe print it out for usefulness.
+
+    ```cpp
+              ...
+
+    if(!psramFound()) {
+      debugln("Couldn't find PSRAM on the board!");
       config.frame_size = FRAMESIZE_SVGA;
       config.fb_location = CAMERA_FB_IN_DRAM;
+      config.jpeg_quality = 30;
     }
-
-    esp_err_t err = esp_camera_init(&config);
-    if (err != ESP_OK) {
-      debugf("Camera init failed with error 0x%x", err);
-    }
-
-    sensor_t * s = esp_camera_sensor_get();
-    /** 
-     * initial sensors are flipped vertically 
-     */
-    s->set_vflip(s, 1); // flip it back
-    s->set_brightness(s, 1); // up the brightness just a bit
-    s->set_saturation(s, -1); // lower the saturation
     
-    debugln("Camera configuration complete!");
+              ...
+
     ```
 
+    <br>
+
+4. Next is using the [esp_camera_init](https://github.com/espressif/esp32-camera/blob/master/driver/include/esp_camera.h) method to try initialising the camera. The camera module also defines some error handling with custom error, so we can see if this fails.
+    
+    <br>
+    
+    ```cpp
+              ...
+
+    esp_err_t initErr = esp_camera_init(&config);
+    if (initErr != ESP_OK) {
+      debugf("Camera init failed with error 0x%x", initErr);
+      return;
+    }
+
+              ...
+    ```
+    
+    <br>
+
+5. Second to last is tweaking the settings of the camera to better accomodate the whitebalance, focus, saturation, etc.
+
+  	```cpp
+              ...
+
+    sensor_t * s = esp_camera_sensor_get();
+    s->set_brightness(s, -1);     // -2 to 2
+    s->set_contrast(s, 1);       // -2 to 2
+    s->set_saturation(s, 0);     // -2 to 2
+    s->set_special_effect(s, 0); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
+    s->set_whitebal(s, 1);       // 0 = disable , 1 = enable
+    s->set_awb_gain(s, 1);       // 0 = disable , 1 = enable
+    s->set_wb_mode(s, 0);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
+    s->set_exposure_ctrl(s, 1);  // 0 = disable , 1 = enable
+    s->set_aec2(s, 0);           // 0 = disable , 1 = enable
+    s->set_ae_level(s, 0);       // -2 to 2
+    s->set_aec_value(s, 300);    // 0 to 1200
+    s->set_gain_ctrl(s, 1);      // 0 = disable , 1 = enable
+    s->set_agc_gain(s, 0);       // 0 to 30
+    s->set_gainceiling(s, (gainceiling_t)6);  // 0 to 6 (6 from "timelapse" example sjr, OK)
+    s->set_bpc(s, 0);            // 0 = disable , 1 = enable
+    s->set_wpc(s, 1);            // 0 = disable , 1 = enable
+    s->set_raw_gma(s, 1);        // 0 = disable , 1 = enable
+    s->set_lenc(s, 1);           // 0 = disable , 1 = enable
+    s->set_hmirror(s, 0);        // 0 = disable , 1 = enable
+    s->set_vflip(s, 0);          // 0 = disable , 1 = enable
+    s->set_dcw(s, 1);            // 0 = disable , 1 = enable
+    s->set_colorbar(s, 0);       // 0 = disable , 1 = enable
+
+    delay(100);
+          
+              ...
+    ```
+
+    <br>
+
+6. Finally, attempt to capture an image with the given seetings. If no capture is made,  de-init the camera.
+
+    ```cpp
+
+              ...
+
+    camera_fb_t *fb = NULL;
+    fb = esp_camera_fb_get();
+    if(!fb) {
+      debugln("Camera capture failed");
+      esp_err_t deinitErr = cameraTeardown();
+      if (deinitErr != ESP_OK) debugf("Camera de-init failed with error 0x%x", deinitErr);
+      debugln();
+      esp_camera_fb_return(fb);
+      return;
+    } else {
+      esp_camera_fb_return(fb);
+    }
+    ```
+
+    <br>
 
 ### 2.2. Camera buffer
 
 ### 2.3. Camera de-init
+
+The camera can be de-initialised safely is we want to ensure it's not being used. There exists the [esp_camera_deinit](https://github.com/espressif/esp32-camera/blob/master/driver/include/esp_camera.h). We can further encapsulate this to get an errors that may occur trying to do this:
+
+<br>
+
+```cpp
+            ...
+
+esp_err_t cameraTeardown() {
+    esp_err_t err = ESP_OK;
+    err = esp_camera_deinit();
+    if (err != ESP_OK) {
+        debugf("Error deinitializing camera: %s\n", esp_err_to_name(err));
+    } else {
+        debugf("Camera deinitialized successfully\n");
+    }
+    debugln();
+    return err;
+}
+```
 
 
 ## 3.0. String Precautions
@@ -267,6 +371,9 @@ String header(MIMEType type, int bodyLength, IPAddress HOST, String macAddress, 
   return header;
 }
 ```
+
+**PLEASE NEVER ACTUALLY MAKE PACKETS LIKE THIS!** There exists many Libraries to better handle thisand encapsulate the HTTP protocol. The one which I have used most is the [HTTPClient](https://github.com/amcewen/HttpClient).
+
 
 ## 4.0. Networking
 ### 4.1. Wi-Fi Connection
