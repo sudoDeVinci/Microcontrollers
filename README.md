@@ -1,6 +1,6 @@
 # Microcontroller Usage - Notes
 
-This repository serves to demonstrate more hard to find/grasp, lesser talked about, or usually poorly explained concepts in microcontroller development using Arduino. Concepts here work for Pi Pico, Esp32-SX and Arduino Uno unless specified otherwise.
+This repository serves to demonstrate more hard to find/grasp, lesser talked about, or usually poorly explained concepts in microcontroller development using Arduino. Concepts here work for Pi Pico, Esp32-SX and Arduino Uno unless specified otherwise. Many of the concepts generally are tranferrable to MicroPython development.
 
 *Due to the closed source nature of my latest project with the Växjö Linnaeus Science Park, any descriptions used from it will only be posted here after being sufficiently decontextualized.*
 
@@ -28,17 +28,16 @@ This repository serves to demonstrate more hard to find/grasp, lesser talked abo
 
 The ability to update networked projects can take a normal IoT project to the next level by removing the need for disassembly and possible remounting during updates. 
 
-This can be done a number of ways, though the general-purpose solution is using an HTTP server to retrieve the updated firmware.
+This can be done one of two main ways:
+1. Throught the Arduino IDE once the PC and board in use are connected over the same wireless network.
+2. Using a secondary server to retrieve the updated firmware automatically.
+
+The first option is laid out clearnly in the arduino docs, in a better format than I could ever provid, [here](https://docs.arduino.cc/arduino-cloud/features/ota-getting-started/).
+The general-purpose solution is using an HTTP server to retrieve the updated firmware.
 
 There are a number of ways to specify this control flow, though the easiest is this:
 
-    -> Board sends current firmware version number (as String) to server.
-    -> Server checks against most updated version number.
-        -> If update is needed, server sends HTTP_UPDATE_OK (200 OK) with firmware .bin file.
-        -> If no update is needed, server sends HTTP_UPDATE_NO_UPDATES (304 Not Modified) and optinonal message.
-    
-    -> Update happens automatically and board restarts.
-    -> If server error of any kind, the return value we see later is HTTP_UPDATE_FAILED.
+![flowchart](OTA_flow.png).
 
 One of the simplest ways to accomplish this is in [ota.cpp](ota.cpp):
 
@@ -46,9 +45,9 @@ One of the simplest ways to accomplish this is in [ota.cpp](ota.cpp):
 t_httpUpdate_return ret = httpUpdate.update(*CLIENT, HOST.toString(), PORT, "/", firmware_version); 
 ```
 
-- CLIENT:-> Reference to WifiClient.
-- HOST:-> Address of server.
-- "/":-> Route on server to access. In the example here it's the root directory.
+- CLIENT:- Reference to WifiClient.
+- HOST:-   Address of server.
+- "/":-    Route on server to access. In the example here it's the root directory.
 
 Here. "ret" will return (1) of the (3) values we specified earlier. We can handle this easily with a switch statement:
 
@@ -301,17 +300,26 @@ esp_err_t cameraTeardown() {
 
 
 ## 3.0. String Precautions
-Because I'm a noob, I mostly use the Arduino String implementation for simple variable-length Strings. The drawback with this is that Arduino String allocation and de-allocation repeatedly can cause memory fragmentation over time. It's also not the fastest way to deal with Strings, but the Arduino String object gives alot in the way of eas-of-use. Many libraries also use the Arduino String implementation when working with Strings, making it a small chore to constantly convert back and forth. I think the trade-off is good enough for most projects. 
+
+[The Arduino String implementation](https://www.arduino.cc/reference/en/language/variables/data-types/stringobject/) is and has always been controversial within the community.
+It has bencome synonymous with "slow" and "bloated" among long-time Arduino programmers, despite years of improvements which now point to the contrary. 
+
+You may ask:
+
+*"But isn't 'String' the same as the 'std::string' since Arduino is pretty much just C++?"*
+
+String and std::string both dynamically allocate memory, std::string is the most commonly used version, as it is part of the official C++ standard. However, on AVR Arduinos, you cannot use the C++ Standard Template Library (STL), so you cannot use std::string. That's why Arduino created its own String class, and this is the most widely used version in the Arduino ecosystem. 
+
+Because I'm a noob, I mostly use the Arduino String implementation for simple variable-length Strings. The drawback with this is that Arduino String allocation and de-allocation repeatedly can cause memory fragmentation over time. It's also not the fastest way to deal with Strings, but the Arduino String object gives alot in the way of ease-of-use. Many libraries also use the Arduino String implementation when working with Strings, making it a small chore to constantly convert back and forth. I think the trade-off is good enough for most projects. 
 
 <br>
 
 That being said, due to the trade-offs, precautions have to be taken for Arduino String use to prevent slowdown, bloat, and memory fragmentation. Simple ways to handle most of these are:
 1. Creating and deleting the Strings we use within the same function.
-2. Pre-allocating Strings when possible to avoiddynamic re-allocation.
+2. Pre-allocating Strings when possible to avoid dynamic re-allocation.
 
-An example I've used (stupidly) before is creating a custom header for an HTTPS packet. This is sometimes needed if you for some reason wanted to use HTTPS, especially with optional/custom headers.
-Headers are a certain format, meaning they can be made into a function call for construction. Due to their set format, it make it easy to calculate their size ahead of time and reserve that memory with Arduino's **reserve()** String method.
-If we pass in the details to our function and manipulate the Strings all within the function, once the function fgoes out of scope, the memory used for temporary Strings will go out of scope and be freed. An example is here:
+An example I've used before is creating an HTTPS packet. This is sometimes needed if you for some reason wanted to use HTTPS. Due to their set format, it make it easy to calculate their size ahead of time and reserve that memory with Arduino's **reserve()** String method.
+If we pass in the details to our function and manipulate the Strings all within the function, once the function goes out of scope, the memory used for temporary Strings will go out of scope and be freed. Let's go over an example below:
 Firstly, it's a good idea to have frequently used Strings, and store related strings in consecutive memory somehow, like a struct. In my case, I usually keep formatted fields in an array and index them with an enum for ease-of-use.
 
 ```cpp
