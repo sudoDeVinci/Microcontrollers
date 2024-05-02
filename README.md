@@ -134,6 +134,8 @@ NOTE: You must set the correct frequency for the camera you've selected. Camera 
 
     ```cpp
 
+              ...
+
     debugln("Setting up camera...");
 
     camera_config_t config;
@@ -283,26 +285,26 @@ The camera can be de-initialised safely is we want to ensure it's not being used
 <br>
 
 ```cpp
-            ...
+              ...
 
-esp_err_t cameraTeardown() {
-    esp_err_t err = ESP_OK;
-    err = esp_camera_deinit();
-    if (err != ESP_OK) {
-        debugf("Error deinitializing camera: %s\n", esp_err_to_name(err));
-    } else {
-        debugf("Camera deinitialized successfully\n");
-    }
-    debugln();
-    return err;
-}
+  esp_err_t cameraTeardown() {
+      esp_err_t err = ESP_OK;
+      err = esp_camera_deinit();
+      if (err != ESP_OK) {
+          debugf("Error deinitializing camera: %s\n", esp_err_to_name(err));
+      } else {
+          debugf("Camera deinitialized successfully\n");
+      }
+      debugln();
+      return err;
+  }
 ```
 
 
 ## 3.0. String Precautions
 
 [The Arduino String implementation](https://www.arduino.cc/reference/en/language/variables/data-types/stringobject/) is and has always been controversial within the community.
-It has bencome synonymous with "slow" and "bloated" among long-time Arduino programmers, despite years of improvements which now point to the contrary. 
+It has bencome synonymous with "slow" and "bloated" among long-time Arduino programmers, despite years of improvements. 
 
 You may ask:
 
@@ -310,78 +312,78 @@ You may ask:
 
 String and std::string both dynamically allocate memory, std::string is the most commonly used version, as it is part of the official C++ standard. However, on AVR Arduinos, you cannot use the C++ Standard Template Library (STL), so you cannot use std::string. That's why Arduino created its own String class, and this is the most widely used version in the Arduino ecosystem. 
 
-Because I'm a noob, I mostly use the Arduino String implementation for simple variable-length Strings. The drawback with this is that Arduino String allocation and de-allocation repeatedly can cause memory fragmentation over time. It's also not the fastest way to deal with Strings, but the Arduino String object gives alot in the way of ease-of-use. Many libraries also use the Arduino String implementation when working with Strings, making it a small chore to constantly convert back and forth. I think the trade-off is good enough for most projects. 
+<br>
+
+Definitively, the "best" strings would be using exclusively null-terminated character arrays, allocated on the stack, since the stack ADT can de-allocate memory in the reverse order of it's allocations. This would mean memory fragmentation can't happen. You'll often hear these char arrays referred to as *'c-style'* strings.I won't go into those here but here's a great tutorial by Alex Allain on their usage and some inner-workings  [-> here <-](https://www.cprogramming.com/tutorial/lesson9.html).
 
 <br>
 
-That being said, due to the trade-offs, precautions have to be taken for Arduino String use to prevent slowdown, bloat, and memory fragmentation. Simple ways to handle most of these are:
-1. Creating and deleting the Strings we use within the same function.
+Because I'm a noob, I mostly use the Arduino String implementation for simple variable-length Strings. The drawback with this is that Arduino String allocation and de-allocation repeatedly can cause memory fragmentation over time. It's also not the fastest way to deal with Strings, but the Arduino String object gives alot in the way of ease-of-use, especially if you're used to programming in a higher-level language such as Java or Python. Many Arduino libraries also use the Arduino String implementation when working with Strings, making it a small chore to constantly convert back and forth. I think the memory-time trade-off is good enough for most projects. 
+
+<br>
+
+That being said, due to the trade-offs, precautions have to be taken for Arduino String use to prevent slowdown, bloat, and memory fragmentation. Some great ways to do this have been laid out in a tutorial on Instructables by the User [drmpf](https://www.instructables.com/member/drmpf/), [-> here <-](https://www.instructables.com/Taming-Arduino-Strings-How-to-Avoid-Memory-Issues/).
+
+In my opinion, the most important of the ways laid out in the tutorial are:
+1. Creating Strings we use within methods locally.
 2. Pre-allocating Strings when possible to avoid dynamic re-allocation.
+3. Result strings to methods are passed in by reference rather than created locally.
 
-An example I've used before is creating an HTTPS packet. This is sometimes needed if you for some reason wanted to use HTTPS. Due to their set format, it make it easy to calculate their size ahead of time and reserve that memory with Arduino's **reserve()** String method.
+An example I've used before is creating an HTTP-style String of sensor data. This is sometimes needed if you for some reason wanted to send or view sensor data in a human-readable format. Due to their set format, it make it easy to calculate their size ahead of time and reserve that memory with Arduino's [**reserve()**](https://www.arduino.cc/reference/en/language/variables/data-types/string/functions/reserve/) String method.
 If we pass in the details to our function and manipulate the Strings all within the function, once the function goes out of scope, the memory used for temporary Strings will go out of scope and be freed. Let's go over an example below:
-Firstly, it's a good idea to have frequently used Strings, and store related strings in consecutive memory somehow, like a struct. In my case, I usually keep formatted fields in an array and index them with an enum for ease-of-use.
+
+So let's look at this method. We are passing an array of Strings which are (4) sensor readings. We want to format this string to be sent within our http packet:
 
 ```cpp
-enum class MIMEType {
-    IMAGE_PNG,
-    IMAGE_JPG,
-    APP_FORM
-};
+  void sendReadings( ... , String* thpd) {
 
-String MIMEStr[] = {
-    "image/png",
-    "image/jpeg",
-    "application/x-www-form-urlencoded"
-};
+    /*
+    First let's get the length of the various sensor readings. 
+    We know ahead of time that we only have 4 values so a loop seems unnecessary.
+    */
 
-/**
- * Referencing the Strings as below. 
- */
-MIMEType type = MIMEType::IMAGE_PNG;
-String mimeType = MIMEStr[static_cast<int>(type)];
+    int value_length;
+    value_length += thpd[0].length();
+    value_length += thpd[1].length();
+    value_length += thpd[2].length();
+    value_length += thpd[3].length();
+
+              ...
+
+  }
 ```
-Now that we can reference our existing strings, let's construct the header:
+
+This here allows use to reserve just enough space to build our String object.
+Once we have reserved the sapce, we can use **.concat()** or += to build the String. This is done to avoid temporary strings made during concatenation, which is done if you use the + operator. I usually try to use **.concat()** as a force of habit but here we use +=.
 
 ```cpp
-String header(MIMEType type, int bodyLength, IPAddress HOST, String macAddress, String timestamp) {
+  void sendReadings( ... , String* thpd) {
 
-  String mimeType = MIMEStr[static_cast<int>(type)];
-  String clfr = "\r\n";
-  int end = clrf.length();
+              ...
 
-  int headerLength = HeaderStr[0].length() + end +
-                     HeaderStr[1].length() + HOST.toString().length() + end +
-                     ... +
-                     HeaderStr[10].length() + timestamp.length();
-  String header;
-  header.reserve(headerLength+1);
-}
+    /*
+      Now we can reserve the space needed for our values String.
+    */
+
+    String values;
+    values.reserve(41 + value_length);
+
+    /*
+      Now we concatenate our String.
+    */
+
+    values += "temperature=";
+    values += thpd[0];
+    values += "&humidity="; 
+    values += thpd[1];
+    values += "&pressure=";
+    values += thpd[2];
+    values += "&dewpoint="; + String(thpd[3]);
+
+              ...
+
+  }
 ```
-
-This here allows use to reserve just enough space to build our header String object. We also end up creating some unseen temporary Strings because we have to call .toString() on the IPAddress, though this isn't an issue, as this small temporary String simply goes out of scope and gets freed at the end of the function call.
-Once we have reserved the sapce, we can use **.concat()** or += to build the String.I try to use **.concat()** as a force of habit.
-
-```cpp
-String header(MIMEType type, int bodyLength, IPAddress HOST, String macAddress, String timestamp) {
-
-  ...
-
-  header.reserve(headerLength+1);
-
-  header.concat(HeaderStr[0] + clrf);
-  header.concat(HeaderStr[1] + HOST.toString() + clrf);
-
-  ...
-  
-  header.concat(HeaderStr[6] + timestamp + clrf);
-  
-  return header;
-}
-```
-
-**PLEASE NEVER ACTUALLY MAKE PACKETS LIKE THIS!** There exists many Libraries to better handle thisand encapsulate the HTTP protocol. The one which I have used most is the [HTTPClient](https://github.com/amcewen/HttpClient).
-
 
 ## 4.0. Networking
 ### 4.1. Wi-Fi Connection
@@ -391,40 +393,48 @@ String header(MIMEType type, int bodyLength, IPAddress HOST, String macAddress, 
 The best way to get time while connected to the internet, is to contact one of many NTP servers.
 
 ```cpp
+              ...
+
   const char* ntpServer = "pool.ntp.org";
   const char* timezone = "CET-1-CEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00";
   configTime(0, 0, ntpServer);
   setenv("TZ", timezone, 1);
+              ...
+
 ```
 
 ```cpp
-tm TIMEINFO;
-time_t NOW;
-/**
-  * Get the current time and format the timestamp as MySQL DATETIME.
-  * timeinfo is an empty struct which is filled by calling getLocalTime().
-  * If tm_year is not equal to 0xFF, it is assumed that valid time information has been received.
-  * Big thanks to Andreas Spiess:https://github.com/SensorsIot/NTP-time-for-ESP8266-and-ESP32/blob/master/NTP_Example/NTP_Example.ino
-  * 
-  */
-String getTime(tm *timeinfo, time_t *now, int timer) {
-  uint32_t start = millis();
-  debug("Getting time!");
 
-  do {
-    time(now);
-    localtime_r(now, timeinfo);
-    debug(".");
-    delay(150);
-  } while (((millis() - start) <= (1000 * timer)) && (timeinfo -> tm_year <= 1970));
-  debugln();
-  if (timeinfo -> tm_year == 1970) return "None";
+              ...
 
-  char timestamp[30];
-  strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(now));
-  debugln("Got time!");
-  return String(timestamp);
-}
+  tm TIMEINFO;
+  time_t NOW;
+
+  /**
+    * Get the current time and format the timestamp as MySQL DATETIME.
+    * timeinfo is an empty struct which is filled by calling getLocalTime().
+    * If tm_year is not equal to 0xFF, it is assumed that valid time information has been received.
+    * Big thanks to Andreas Spiess:https://github.com/SensorsIot/NTP-time-for-ESP8266-and-ESP32/blob/master/NTP_Example/NTP_Example.ino
+    * 
+    */
+  String getTime(tm *timeinfo, time_t *now, int timer) {
+    uint32_t start = millis();
+    debug("Getting time!");
+
+    do {
+      time(now);
+      localtime_r(now, timeinfo);
+      debug(".");
+      delay(150);
+    } while (((millis() - start) <= (1000 * timer)) && (timeinfo -> tm_year <= 1970));
+    debugln();
+    if (timeinfo -> tm_year == 1970) return "None";
+
+    char timestamp[30];
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(now));
+    debugln("Got time!");
+    return String(timestamp);
+  }
 ```
 ### 4.3. Keeping Connections
 
