@@ -422,6 +422,8 @@ Once we have reserved the sapce, we can use **.concat()** or += to build the Str
   }
 ```
 
+As for the third point, this is the same logic as to why complex objects aren't passed by value. We want to minimize String construction, so they are passed by refrence to modify an already existent (fixed sized from reserve()) String. 
+
 ## 4.0. Networking
 ### 4.1. Wi-Fi Connection
 
