@@ -17,7 +17,8 @@ This repository serves to demonstrate more hard to find/grasp, lesser talked abo
     4.0.................. Networking
         4.1.............. Wi-Fi Connections
         4.2.............. Getting Correct Time
-        4.3.............. Keeping Connections
+        4.3.............. Sending HTTP packets
+        4.4.............. Sending HTTPS packets
 
     5.0.................. Sensor Reading
     
@@ -254,7 +255,7 @@ NOTE: You must set the correct frequency for the camera you've selected. Camera 
 
     <br>
 
-6. Finally, attempt to capture an image with the given seetings. If no capture is made,  de-init the camera.
+6. Finally, attempt to capture an image with the given seetings. If no capture is made,  de-init the camera. 
 
     ```cpp
 
@@ -272,11 +273,44 @@ NOTE: You must set the correct frequency for the camera you've selected. Camera 
     } else {
       esp_camera_fb_return(fb);
     }
+
     ```
 
     <br>
 
 ### 2.2. Camera buffer
+
+The camera buffer itself is just a struct comprising a uint8_t array and information on it like the dimensions and format:
+
+```cpp
+/**
+ * @brief Data structure of camera frame buffer
+ */
+typedef struct {
+    uint8_t * buf;              /*!< Pointer to the pixel data */
+    size_t len;                 /*!< Length of the buffer in bytes */
+    size_t width;               /*!< Width of the buffer in pixels */
+    size_t height;              /*!< Height of the buffer in pixels */
+    pixformat_t format;         /*!< Format of the pixel data */
+    struct timeval timestamp;   /*!< Timestamp since boot of the first DMA buffer of the frame */
+} camera_fb_t;
+```
+
+When capturing an image, it's a usual error that images taken in succession are either not properly exposed, or are identical. The easiest remedy for this I find is just flushing the camera buffer by taking multiple pictures in a row (2-3) and taking the final one.
+
+```cpp
+              ...
+  camera_fb_t * fb = NULL;             
+  fb = esp_camera_fb_get();
+  esp_camera_fb_return(fb);
+  fb = esp_camera_fb_get();
+  esp_camera_fb_return(fb);
+  fb = esp_camera_fb_get();
+              ...
+```
+
+It should be noted that usually, these cameras need a few seconds to capture a sufficiently 
+exposed image. As well as on startup, the first few images captured may also not be sufficiently exposed. I find things like capturing mutiple images,a and adding small delays (blocking or non- blocking) between helps keep image quality consistent. 
 
 ### 2.3. Camera de-init
 
@@ -285,6 +319,7 @@ The camera can be de-initialised safely is we want to ensure it's not being used
 <br>
 
 ```cpp
+
               ...
 
   esp_err_t cameraTeardown() {
@@ -298,8 +333,10 @@ The camera can be de-initialised safely is we want to ensure it's not being used
       debugln();
       return err;
   }
+
 ```
 
+<br>
 
 ## 3.0. String Precautions
 
@@ -403,6 +440,8 @@ The best way to get time while connected to the internet, is to contact one of m
 
 ```
 
+<br>
+
 ```cpp
 
               ...
@@ -436,7 +475,18 @@ The best way to get time while connected to the internet, is to contact one of m
     return String(timestamp);
   }
 ```
-### 4.3. Keeping Connections
+
+
+### 4.3. Sending HTTP packets
+
+
+
+
+### 4.4. Sending HTTPS packets
+
+
+
+
 
 ## 5.0. Sensor Reading
 
