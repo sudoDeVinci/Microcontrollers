@@ -5,6 +5,7 @@ This repository serves to demonstrate more hard to find/grasp, lesser talked abo
 *Due to the closed source nature of my latest project with the Växjö Linnaeus Science Park, any descriptions used from it will only be posted here after being sufficiently decontextualized.*
 
 ## Contents
+```sh
     1.0.................. Arduino OTA Updates
 
     2.0.................. ESP32 Image Capture
@@ -23,7 +24,7 @@ This repository serves to demonstrate more hard to find/grasp, lesser talked abo
     5.0.................. Sensor Reading
     
     6.0.................. Multi-Core Usage
-
+```
 
 ## 1.0. Arduino OTA Updates
 
@@ -38,7 +39,7 @@ The general-purpose solution is using an HTTP server to retrieve the updated fir
 
 There are a number of ways to specify this control flow, though the easiest is this:
 
-![flowchart](OTA_flow.png).
+<img src = "OTA_flow.png" width = 1000 alt = "FlowChart">
 
 One of the simplest ways to accomplish this is in [ota.cpp](ota.cpp):
 
